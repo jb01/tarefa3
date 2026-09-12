@@ -79,8 +79,14 @@ def create_app(test_config=None):
             username = request.form.get("username", "").strip()
             password = request.form.get("password", "")
 
-            if not username or not password:
+            if not username and not password:
                 flash("Informe usuário e senha.", "error")
+                return render_template("login.html"), 400
+            elif not username:
+                flash("Informe o usuário.", "error")
+                return render_template("login.html"), 400
+            elif not password:
+                flash("Informe a senha.", "error")
                 return render_template("login.html"), 400
 
             db = get_db()
@@ -119,10 +125,17 @@ def create_app(test_config=None):
     def register():
         """Página de cadastro de novos usuários comuns (exclusiva para administrador)."""
         if request.method == "POST":
-            username = request.form.get("username", "").strip()
+            raw_username = request.form.get("username", "")
+            username = raw_username.strip()
             password = request.form.get("password", "")
 
-            if not username or not password:
+            if not raw_username and not password:
+                flash("Preencha todos os campos.", "error")
+                return render_template("register.html"), 400
+            if not username:
+                flash("Nome de usuário não pode ser vazio ou conter apenas espaços.", "error")
+                return render_template("register.html"), 400
+            if not password:
                 flash("Preencha todos os campos.", "error")
                 return render_template("register.html"), 400
 
