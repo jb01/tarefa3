@@ -285,6 +285,30 @@ class TestUserRegistrationAndPrivileges:
             conn.close()
             assert result["count"] == 0
 
+    def test_register_rejects_username_with_digits(self, client, app):
+        """Testa que o cadastro rejeita username contendo números."""
+        # Autentica como admin
+        client.post("/", data={"username": "admin", "password": "admin"})
+
+        # Tenta cadastrar com username contendo dígitos
+        response = client.post(
+            "/register",
+            data={"username": "usuario123", "password": "senhaValida"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Nome de usuário não pode conter números." in html
+
+        # Confirma que o usuário com números não foi inserido no banco
+        with app.app_context():
+            conn = get_db_connection(app.config["DATABASE"])
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE username = 'usuario123'")
+            result = cursor.fetchone()
+            conn.close()
+            assert result["count"] == 0
+
 
 class TestCommonUserFlowAndAccessControl:
     """Testes do fluxo do usuário comum e restrições de controle de acesso."""

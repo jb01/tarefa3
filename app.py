@@ -19,6 +19,13 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from db import get_db_connection, init_db
 
 
+def validate_username(username: str | None) -> tuple[bool, str | None]:
+    """Valida se o username é válido (não vazio e não composto apenas por espaços)."""
+    if not username or not username.strip():
+        return False, "Nome de usuário não pode ser vazio ou conter apenas espaços."
+    return True, None
+
+
 def create_app(test_config=None):
     """Factory para criação e configuração da aplicação Flask."""
     app = Flask(__name__, instance_relative_config=True)
@@ -132,9 +139,12 @@ def create_app(test_config=None):
             if not raw_username and not password:
                 flash("Preencha todos os campos.", "error")
                 return render_template("register.html"), 400
-            if not username:
-                flash("Nome de usuário não pode ser vazio ou conter apenas espaços.", "error")
+
+            is_valid, error_msg = validate_username(raw_username)
+            if not is_valid:
+                flash(error_msg, "error")
                 return render_template("register.html"), 400
+
             if not password:
                 flash("Preencha todos os campos.", "error")
                 return render_template("register.html"), 400
