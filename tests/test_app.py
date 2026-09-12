@@ -147,7 +147,7 @@ class TestAuthenticationFlow:
         assert "Usuário ou senha inválidos." in html
 
     def test_login_empty_fields_rejected(self, client):
-        """Testa validação de campos vazios no login."""
+        """Testa validação de ambos os campos vazios no login."""
         response = client.post(
             "/",
             data={"username": "", "password": ""},
@@ -156,6 +156,39 @@ class TestAuthenticationFlow:
         assert response.status_code == 400
         html = response.get_data(as_text=True)
         assert "Informe usuário e senha." in html
+
+    def test_login_empty_username_rejected(self, client):
+        """Testa validação de campo de usuário vazio com senha preenchida."""
+        response = client.post(
+            "/",
+            data={"username": "", "password": "admin"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Informe o usuário." in html
+
+    def test_login_empty_password_rejected(self, client):
+        """Testa validação de campo de senha vazia com usuário preenchido."""
+        response = client.post(
+            "/",
+            data={"username": "admin", "password": ""},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Informe a senha." in html
+
+    def test_login_whitespace_username_rejected(self, client):
+        """Testa validação de campo de usuário contendo apenas espaços em branco."""
+        response = client.post(
+            "/",
+            data={"username": "   ", "password": "admin"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Informe o usuário." in html
 
 
 class TestUserRegistrationAndPrivileges:
@@ -227,6 +260,30 @@ class TestUserRegistrationAndPrivileges:
         )
         assert response.status_code == 400
         assert "Preencha todos os campos." in response.get_data(as_text=True)
+
+    def test_register_rejects_empty_or_whitespace_username(self, client, app):
+        """Testa que o cadastro rejeita username vazio ou contendo apenas espaços."""
+        # Autentica como admin
+        client.post("/", data={"username": "admin", "password": "admin"})
+
+        # Tenta cadastrar com username contendo apenas espaços
+        response = client.post(
+            "/register",
+            data={"username": "   ", "password": "senha123"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Nome de usuário não pode ser vazio ou conter apenas espaços." in html
+
+        # Confirma que nenhum usuário foi inserido no banco
+        with app.app_context():
+            conn = get_db_connection(app.config["DATABASE"])
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE trim(username) = ''")
+            result = cursor.fetchone()
+            conn.close()
+            assert result["count"] == 0
 
 
 class TestCommonUserFlowAndAccessControl:
