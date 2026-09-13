@@ -56,3 +56,30 @@ def init_db(db_path: str) -> None:
     finally:
         conn.close()
 
+
+def get_user_by_username(conn: sqlite3.Connection, username: str) -> sqlite3.Row | None:
+    """Busca um usuário no banco pelo nome de usuário."""
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, username, password_hash, is_admin FROM users WHERE username = ?",
+        (username,),
+    )
+    return cursor.fetchone()
+
+
+def create_user(
+    conn: sqlite3.Connection,
+    username: str,
+    password_hash: str,
+    is_admin: int = 0,
+) -> int:
+    """Insere um novo usuário na tabela users e retorna o ID inserido."""
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)",
+        (username, password_hash, is_admin),
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+

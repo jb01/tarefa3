@@ -1,0 +1,9 @@
+#!/bin/sh
+
+echo "============================================"
+echo "BLOQUEADO: git push não é permitido."
+echo "Este projeto exige publicação manual."
+echo "Consulte AGENTS.md."
+echo "============================================"
+
+exit 1

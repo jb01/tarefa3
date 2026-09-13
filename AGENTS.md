@@ -272,3 +272,30 @@ Não faça mudanças arquiteturais relevantes silenciosamente.
 
 Quando um requisito entrar em conflito com este arquivo, interrompa a implementação daquela parte, explique o conflito e solicite orientação antes de prosseguir.
 
+## Checkpoint humano — alterações no banco
+
+Qualquer alteração estrutural no banco SQLite exige aprovação humana prévia.
+
+Incluem-se:
+
+- criação ou remoção de tabelas;
+- adição ou remoção de colunas;
+- alteração de constraints;
+- mudança de índices;
+- alteração do processo de inicialização/migração.
+
+Antes de executar a alteração, o agente deve:
+
+1. interromper a implementação;
+2. explicar a alteração proposta;
+3. informar o impacto esperado;
+4. mostrar o SQL ou código de migração pretendido;
+5. solicitar uma decisão humana.
+
+As decisões possíveis são:
+
+- APROVAR;
+- EDITAR;
+- REJEITAR.
+
+O agente não pode aplicar a alteração antes da decisão humana.

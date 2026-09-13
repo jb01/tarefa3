@@ -147,7 +147,7 @@ class TestAuthenticationFlow:
         assert "Usuário ou senha inválidos." in html
 
     def test_login_empty_fields_rejected(self, client):
-        """Testa validação de campos vazios no login."""
+        """Testa validação de ambos os campos vazios no login."""
         response = client.post(
             "/",
             data={"username": "", "password": ""},
@@ -156,6 +156,39 @@ class TestAuthenticationFlow:
         assert response.status_code == 400
         html = response.get_data(as_text=True)
         assert "Informe usuário e senha." in html
+
+    def test_login_empty_username_rejected(self, client):
+        """Testa validação de campo de usuário vazio com senha preenchida."""
+        response = client.post(
+            "/",
+            data={"username": "", "password": "admin"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Informe o usuário." in html
+
+    def test_login_empty_password_rejected(self, client):
+        """Testa validação de campo de senha vazia com usuário preenchido."""
+        response = client.post(
+            "/",
+            data={"username": "admin", "password": ""},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Informe a senha." in html
+
+    def test_login_whitespace_username_rejected(self, client):
+        """Testa validação de campo de usuário contendo apenas espaços em branco."""
+        response = client.post(
+            "/",
+            data={"username": "   ", "password": "admin"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Informe o usuário." in html
 
 
 class TestUserRegistrationAndPrivileges:
@@ -169,7 +202,7 @@ class TestUserRegistrationAndPrivileges:
         # Cadastra novo usuário
         response = client.post(
             "/register",
-            data={"username": "usuario1", "password": "senha123"},
+            data={"username": "usuario_valido", "password": "senha123"},
             follow_redirects=True,
         )
         assert response.status_code == 200
@@ -179,12 +212,12 @@ class TestUserRegistrationAndPrivileges:
         with app.app_context():
             conn = get_db_connection(app.config["DATABASE"])
             cursor = conn.cursor()
-            cursor.execute("SELECT username, password_hash, is_admin FROM users WHERE username = 'usuario1'")
+            cursor.execute("SELECT username, password_hash, is_admin FROM users WHERE username = 'usuario_valido'")
             user = cursor.fetchone()
             conn.close()
 
             assert user is not None
-            assert user["username"] == "usuario1"
+            assert user["username"] == "usuario_valido"
             assert user["is_admin"] == 0  # Obrigatório ser usuário comum
             assert user["password_hash"] != "senha123"
             assert check_password_hash(user["password_hash"], "senha123")
@@ -227,6 +260,54 @@ class TestUserRegistrationAndPrivileges:
         )
         assert response.status_code == 400
         assert "Preencha todos os campos." in response.get_data(as_text=True)
+
+    def test_register_rejects_empty_or_whitespace_username(self, client, app):
+        """Testa que o cadastro rejeita username vazio ou contendo apenas espaços."""
+        # Autentica como admin
+        client.post("/", data={"username": "admin", "password": "admin"})
+
+        # Tenta cadastrar com username contendo apenas espaços
+        response = client.post(
+            "/register",
+            data={"username": "   ", "password": "senha123"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Nome de usuário não pode ser vazio ou conter apenas espaços." in html
+
+        # Confirma que nenhum usuário foi inserido no banco
+        with app.app_context():
+            conn = get_db_connection(app.config["DATABASE"])
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE trim(username) = ''")
+            result = cursor.fetchone()
+            conn.close()
+            assert result["count"] == 0
+
+    def test_register_rejects_username_with_digits(self, client, app):
+        """Testa que o cadastro rejeita username contendo números."""
+        # Autentica como admin
+        client.post("/", data={"username": "admin", "password": "admin"})
+
+        # Tenta cadastrar com username contendo dígitos
+        response = client.post(
+            "/register",
+            data={"username": "usuario123", "password": "senhaValida"},
+            follow_redirects=True,
+        )
+        assert response.status_code == 400
+        html = response.get_data(as_text=True)
+        assert "Nome de usuário não pode conter números." in html
+
+        # Confirma que o usuário com números não foi inserido no banco
+        with app.app_context():
+            conn = get_db_connection(app.config["DATABASE"])
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE username = 'usuario123'")
+            result = cursor.fetchone()
+            conn.close()
+            assert result["count"] == 0
 
 
 class TestCommonUserFlowAndAccessControl:
