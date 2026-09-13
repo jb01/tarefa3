@@ -1,6 +1,6 @@
 # MADR — Arquitetura inicial da aplicação de usuários
 
-- **Status:** Aceita
+- **Status:** Substituída por `docs/decisao-arquitetural-etapa4.md`
 - **Data:** 2026-09-12
 - **Decisão:** Python + Flask + SQLite
 - **Escopo:** aplicação web local/simples para autenticação e cadastro de usuários

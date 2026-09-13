@@ -202,7 +202,7 @@ class TestUserRegistrationAndPrivileges:
         # Cadastra novo usuário
         response = client.post(
             "/register",
-            data={"username": "usuario1", "password": "senha123"},
+            data={"username": "usuario_valido", "password": "senha123"},
             follow_redirects=True,
         )
         assert response.status_code == 200
@@ -212,12 +212,12 @@ class TestUserRegistrationAndPrivileges:
         with app.app_context():
             conn = get_db_connection(app.config["DATABASE"])
             cursor = conn.cursor()
-            cursor.execute("SELECT username, password_hash, is_admin FROM users WHERE username = 'usuario1'")
+            cursor.execute("SELECT username, password_hash, is_admin FROM users WHERE username = 'usuario_valido'")
             user = cursor.fetchone()
             conn.close()
 
             assert user is not None
-            assert user["username"] == "usuario1"
+            assert user["username"] == "usuario_valido"
             assert user["is_admin"] == 0  # Obrigatório ser usuário comum
             assert user["password_hash"] != "senha123"
             assert check_password_hash(user["password_hash"], "senha123")

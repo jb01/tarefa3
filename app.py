@@ -16,13 +16,15 @@ from flask import (
 )
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from db import get_db_connection, init_db
+from db import create_user, get_db_connection, get_user_by_username, init_db
 
 
 def validate_username(username: str | None) -> tuple[bool, str | None]:
-    """Valida se o username é válido (não vazio e não composto apenas por espaços)."""
+    """Valida se o username é válido (não vazio, não composto apenas por espaços e sem dígitos)."""
     if not username or not username.strip():
         return False, "Nome de usuário não pode ser vazio ou conter apenas espaços."
+    if any(char.isdigit() for char in username):
+        return False, "Nome de usuário não pode conter números."
     return True, None
 
 
@@ -97,12 +99,7 @@ def create_app(test_config=None):
                 return render_template("login.html"), 400
 
             db = get_db()
-            cursor = db.cursor()
-            cursor.execute(
-                "SELECT id, username, password_hash, is_admin FROM users WHERE username = ?",
-                (username,),
-            )
-            user = cursor.fetchone()
+            user = get_user_by_username(db, username)
 
             if user is None or not check_password_hash(user["password_hash"], password):
                 flash("Usuário ou senha inválidos.", "error")
@@ -150,22 +147,9 @@ def create_app(test_config=None):
                 return render_template("register.html"), 400
 
             db = get_db()
-            cursor = db.cursor()
-
-            # Verifica unicidade do nome de usuário
-            cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
-            if cursor.fetchone() is not None:
-                flash("Nome de usuário já cadastrado.", "error")
-                return render_template("register.html"), 409
-
-            # Cadastra novo usuário comum (obrigatoriamente is_admin = 0)
             password_hash = generate_password_hash(password)
             try:
-                cursor.execute(
-                    "INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, 0)",
-                    (username, password_hash),
-                )
-                db.commit()
+                create_user(db, username, password_hash, is_admin=0)
                 flash("Usuário cadastrado com sucesso.", "success")
                 return redirect(url_for("register"))
             except sqlite3.IntegrityError:
